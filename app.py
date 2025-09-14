@@ -271,25 +271,82 @@ st.markdown(
       div[data-testid="stDataEditor"] div[role="gridcell"] { padding: 4px 8px !important; }
       div[data-testid="stDataFrame"] div[role="columnheader"],
       div[data-testid="stDataEditor"] div[role="columnheader"] { padding: 6px 8px !important; }
+      /* フォーム内コントロールの余白を統一 */
+      div[data-testid="stForm"] > div { margin-bottom: 10px; }
+      div[data-testid="stForm"] .stRadio { margin-bottom: 6px; }
+      div[data-testid="stForm"] .stSelectbox, 
+      div[data-testid="stForm"] .stNumberInput, 
+      div[data-testid="stForm"] .stDateInput { margin-bottom: 6px; }
       /* フォーム（詳細: 体重/運動）を横並びに */
       @media (min-width: 992px) {
         div[data-testid="stForm"] { display: inline-block; vertical-align: top; width: 49%; margin-right: 1%; }
         div[data-testid="stForm"] + div[data-testid="stForm"] { margin-right: 0; }
       }
-      .stButton > button { white-space: nowrap; }
+      .stButton > button { 
+        white-space: nowrap; 
+        min-height: 2.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      
       /* Modern green buttons with subtle depth */
-      .stButton > button[kind="primary"],
-      .stButton > button {
-        background: linear-gradient(135deg, #22c55e 0%, #16a34a 60%, #0ea5e9 100%) !important;
-        border: 0 !important;
-        color: #ffffff !important;
+      /* Base button size */
+      .stButton > button,
+      .stDownloadButton > button {
+        height: 40px !important;
+        padding: 0 16px !important;
+        min-width: 140px !important;
         border-radius: 12px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+      }
+      /* Primary (追加/更新、目標を保存) */
+      .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 60%, #0ea5e9 100%) !important;
+        border: 0 !important; color: #ffffff !important;
         box-shadow: 0 10px 20px rgba(34,197,94,0.25), 0 6px 8px rgba(14,165,233,0.15) !important;
         transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease !important;
+      }
+      /* Danger (削除): 各フォーム内の2つ目のボタンを赤系に */
+      div[data-testid="stForm"] .stButton:nth-of-type(2) > button {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%) !important;
+        border: 0 !important; color: #ffffff !important;
+        box-shadow: 0 10px 20px rgba(239,68,68,0.25) !important;
+      }
+      /* Secondary (CSVダウンロード) */
+      .stDownloadButton > button {
+        background: linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 60%) !important;
+        border: 1px solid #d1d5db !important; color: #111827 !important;
+        box-shadow: 0 4px 10px rgba(17,24,39,0.08) !important;
+      }
+      [data-theme="dark"] .stDownloadButton > button {
+        background: linear-gradient(135deg, #475569 0%, #334155 60%) !important;
+        border-color: #334155 !important; color: #ffffff !important;
       }
       .stButton > button:hover { transform: translateY(-1px); filter: brightness(1.02); }
       .stButton > button:active { transform: translateY(0); filter: brightness(0.98); }
       .stButton > button:focus { outline: none; box-shadow: 0 0 0 3px rgba(14,165,233,0.35) !important; }
+      /* Ensure sidebar buttons (目標を保存) も同一スタイル */
+      section[data-testid="stSidebar"] .stButton > button {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 60%, #0ea5e9 100%) !important;
+        color: #ffffff !important;
+      }
+      .stDownloadButton > button:hover { transform: translateY(-1px); filter: brightness(1.02); }
+      .stDownloadButton > button:active { transform: translateY(0); filter: brightness(0.98); }
+      
+      /* 入力フィールドの統一 */
+      .stNumberInput > div > div > input,
+      .stDateInput > div > div > input {
+        min-height: 2.5rem;
+        font-size: 0.875rem;
+      }
+      
+      /* サブヘッダーのスタイル */
+      .stSubheader {
+        margin-bottom: 1rem !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -403,46 +460,44 @@ if save_goal:
     st.sidebar.success("目標体重を保存しました。")
 
 
-# ----- タイトル ------------------------------------------------------------
+# ----- 詳細セクション ------------------------------------------------------------
 if show_advanced:
-    st.title("日々の体重可視化アプリ（詳細）")
-    st.caption("CSVに保存し、折れ線と移動平均で推移を可視化します。")
-
-
-if show_advanced:
-    # ----- 入力フォーム（追加/更新/削除） ------------------------------------
-    # 過去の体重選択UIは撤廃（ユーザー要望）
-
-    # 直近で入力した体重をデフォルト値に設定
-    if not df.empty and "weight" in df.columns:
-        try:
-            _latest_weight_default = round(float(df["weight"].iloc[-1]), 1)
-        except Exception:
+    col_w, col_e = st.columns(2)
+    
+    with col_w:
+        # ----- 体重入力フォーム ------------------------------------
+        st.subheader("📊 体重データ入力")
+        
+        # 直近で入力した体重をデフォルト値に設定
+        if not df.empty and "weight" in df.columns:
+            try:
+                _latest_weight_default = round(float(df["weight"].iloc[-1]), 1)
+            except Exception:
+                _latest_weight_default = 60.0
+        else:
             _latest_weight_default = 60.0
-    else:
-        _latest_weight_default = 60.0
-
-    with st.form("edit_form", clear_on_submit=False):
-        col1, col2, _ = st.columns([1, 1, 1])
-        with col1:
-            d_input = st.date_input("日付", value=date.today(), key="w_date")
-        with col2:
-            # 入力表示も小数1位で固定
-            w_input = st.number_input(
-                "体重 (kg)",
-                min_value=20.0,
-                max_value=300.0,
-                value=st.session_state.get("w_input", _latest_weight_default),
-                step=0.1,
-                format="%.1f",
-                key="w_input",
-            )
-        # ボタンは右寄せで下段に配置（詳細セクション共通の整列）
-        btn_sp1, btn_sp2, btn_sp3 = st.columns([7.2, 0.9, 0.9])
-        with btn_sp2:
-            submitted_add = st.form_submit_button("追加/更新", type="primary")
-        with btn_sp3:
-            submitted_del = st.form_submit_button("削除")
+            
+        with st.form("edit_form", clear_on_submit=False):
+            # 入力フィールドを統一されたサイズで配置
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                d_input = st.date_input("日付", value=date.today(), key="w_date")
+            with col2:
+                # 入力表示も小数1位で固定
+                w_input = st.number_input(
+                    "体重 (kg)",
+                    min_value=20.0,
+                    max_value=300.0,
+                    value=st.session_state.get("w_input", _latest_weight_default),
+                    step=0.1,
+                    format="%.1f",
+                    key="w_input",
+                )
+            
+            # ボタンを統一されたサイズで横並び配置
+            btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 1])
+            with btn_col2: submitted_add = st.form_submit_button("追加/更新", type="primary", use_container_width=True)
+            with btn_col3: submitted_del = st.form_submit_button("削除", use_container_width=True)
 
     if submitted_add:
         # 追加または更新（同日があれば上書き）
@@ -474,24 +529,17 @@ if show_advanced:
 # CSVアップロードによる追記マージ機能は削除（ユーザー要望）
 
 
-# ===== 運動の記録 ========================================================
-if show_advanced:
-    st.header("運動の記録")
-    st.caption("日付・種目・時間(分)を記録します。運動は小数点なし（分単位）。")
-
-ex_df = load_exercises()
-# 過去の種目一覧（重複排除）
-past_activities = (
-    sorted(ex_df["activity"].dropna().astype(str).unique()) if not ex_df.empty else []
-)
-
-if show_advanced:
-    with st.form("exercise_form", clear_on_submit=False):
-        ex_c1, ex_c2, ex_c3 = st.columns([1, 1, 1])
-        with ex_c1:
-            ex_date = st.date_input("日付(運動)", value=date.today(), key="ex_date")
-        with ex_c2:
-            # 種目の選択/新規入力を切替（1つの場所で完結）
+    with col_e:
+        # ----- 運動データ入力フォーム ------------------------------------
+        st.subheader("🏃‍♂️ 運動データ入力")
+        
+        ex_df = load_exercises()
+        # 過去の種目一覧（重複排除）
+        past_activities = (
+            sorted(ex_df["activity"].dropna().astype(str).unique()) if not ex_df.empty else []
+        )
+        with st.form("exercise_form", clear_on_submit=False):
+            # 入力方法（先頭に配置して縦横バランスを整える）
             mode = st.radio(
                 "入力方法",
                 options=["過去から選択", "新規入力"],
@@ -499,32 +547,39 @@ if show_advanced:
                 key="ex_mode",
             )
             force_new = (not past_activities)
-            if mode == "新規入力" or force_new:
-                st.session_state["ex_mode"] = "新規入力"
-                st.text_input(
-                    "種目",
-                    value=st.session_state.get("ex_activity_text", ""),
-                    key="ex_activity_text",
-                    placeholder="例: ウォーキング",
-                    help=("過去の候補がないため新規入力のみ利用可" if force_new else None),
+
+            ex_c1, ex_c2, ex_c3 = st.columns([1, 1, 1])
+            with ex_c1:
+                ex_date = st.date_input("日付(運動)", value=date.today(), key="ex_date")
+            with ex_c2:
+                # 種目の選択/新規入力を切替（1つの場所で完結）
+                if mode == "新規入力" or force_new:
+                    st.session_state["ex_mode"] = "新規入力"
+                    st.text_input(
+                        "種目",
+                        value=st.session_state.get("ex_activity_text", ""),
+                        key="ex_activity_text",
+                        placeholder="例: ウォーキング",
+                        help=("過去の候補がないため新規入力のみ利用可" if force_new else None),
+                    )
+                else:
+                    st.selectbox(
+                        "種目",
+                        options=(past_activities if past_activities else ["(候補なし)"]),
+                        key="ex_activity_select",
+                        help="過去の種目から選択",
+                    )
+            with ex_c3:
+                ex_duration = st.number_input(
+                    "時間 (分)", min_value=0, max_value=1440, step=1, format="%d", key="ex_duration"
                 )
-            else:
-                st.selectbox(
-                    "種目",
-                    options=(past_activities if past_activities else ["(候補なし)"]),
-                    key="ex_activity_select",
-                    help="過去の種目から選択",
-                )
-        with ex_c3:
-            ex_duration = st.number_input(
-                "時間 (分)", min_value=0, max_value=1440, step=1, format="%d", key="ex_duration"
-            )
-        # ボタンは右寄せで下段に配置（詳細セクション共通の整列）
-        ex_sp1, ex_sp2, ex_sp3 = st.columns([7.2, 0.9, 0.9])
-        with ex_sp2:
-            ex_add = st.form_submit_button("追加/更新", type="primary")
-        with ex_sp3:
-            ex_del = st.form_submit_button("削除")
+            # ボタンを統一されたサイズで横並び配置
+            st.markdown("<br>", unsafe_allow_html=True)  # スペース追加
+            ex_btn_col1, ex_btn_col2, ex_btn_col3 = st.columns([2, 1, 1])
+            with ex_btn_col2:
+                ex_add = st.form_submit_button("追加/更新", type="primary", use_container_width=True)
+            with ex_btn_col3:
+                ex_del = st.form_submit_button("削除", use_container_width=True)
 
 if show_advanced and 'ex_date' in st.session_state:
     # 防御的に取り出し
@@ -576,22 +631,25 @@ if show_advanced and ex_del:
     else:
         st.info("運動データがありません。")
 
-# ダウンロード（運動）
+"""
+上記の運動ダウンロードボタンは、フォーム真下（右カラム）に配置してレイアウトを揃える
+"""
 if show_advanced:
-    ex_csv = StringIO()
-    ex_export = load_exercises().copy()
-    if not ex_export.empty:
-        ex_export["date"] = pd.to_datetime(ex_export["date"]).dt.date.astype(str)
-        ex_export["duration_min"] = (
-            pd.to_numeric(ex_export["duration_min"], errors="coerce").round(0).astype(int)
+    with col_e:
+        ex_csv = StringIO()
+        ex_export = load_exercises().copy()
+        if not ex_export.empty:
+            ex_export["date"] = pd.to_datetime(ex_export["date"]).dt.date.astype(str)
+            ex_export["duration_min"] = (
+                pd.to_numeric(ex_export["duration_min"], errors="coerce").round(0).astype(int)
+            )
+        ex_export.to_csv(ex_csv, index=False, encoding="utf-8")
+        st.download_button(
+            "運動データをCSVでダウンロード",
+            data=ex_csv.getvalue().encode("utf-8"),
+            file_name="exercises_export.csv",
+            mime="text/csv",
         )
-    ex_export.to_csv(ex_csv, index=False, encoding="utf-8")
-    st.download_button(
-        "運動データをCSVでダウンロード",
-        data=ex_csv.getvalue().encode("utf-8"),
-        file_name="exercises_export.csv",
-        mime="text/csv",
-    )
 
 # 表示範囲はダッシュボードの選択を共有
 range_label = st.session_state.get("range_label", "1週間")
